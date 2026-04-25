@@ -35,6 +35,7 @@ int main(){
     for(auto &ch : wstr){
         std::print("[U+{:04X}]{} ", (int)ch, hai::width(ch)); // code point and visual width
     }
+    std::print("\n{}", hai::str_width(wstr)); // calculate visual width of a string
     // nothing more 乁(ツ)厂
     return 0;
 }
@@ -46,6 +47,7 @@ int main(){
 "😁hello world测试龎赑𥸈𦜍🌏" with length 39
 😁hello world测试龎赑𥸈𦜍🌏
 [U+1F601]2 [U+0068]1 [U+0065]1 [U+006C]1 [U+006C]1 [U+006F]1 [U+0020]1 [U+0077]1 [U+006F]1 [U+0072]1 [U+006C]1 [U+0064]1 [U+6D4B]2 [U+8BD5]2 [U+9F8E]2 [U+8D51]2 [U+25E08]2 [U+2670D]2 [U+1F30F]2 
+27
 ```
 
 
