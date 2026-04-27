@@ -12,8 +12,8 @@ You are developing a TUI text editor.
 And you found that Unicode characters like `你` and `😁` are not only one point, it's 1~4 bytes.  
 Simply processing raw **UTF-8 byte streams** can lead to **truncate** and **garbled text**.  
 To solve this, we need to convert **UTF-8 byte stream** into a **UTF-32 code point array** and store it, just for calculate; When output, conversion **UTF-32 array** back into **UTF-8 byte stream**.  
-You can't find a exist *C++ Unicode library* that is lightweight and easy to use, so you made this yourself.
-**But more tricky**, some characters are full width like `中` `の` and **emoji**, while others are half width, but you don't know how to identify and separate them, that felt extremely difficult...  
+You can't find a exist *C++ Unicode library* that is lightweight and easy to use, so you made this yourself.  
+**But more tricky**, some characters are full width like `中` `の` and **emoji**, while others are half width, you don't know how to identify and separate them, that felt extremely difficult...  
 
 
 ## **So maybe you are looking for *haiyyyyh/unicode***
@@ -25,17 +25,17 @@ You can't find a exist *C++ Unicode library* that is lightweight and easy to use
 #include "hai/unicode.hpp" // this library
 
 using std::string;
-using std::wstring;
+using std::u32string;
 
 int main(){
-    string str = "😁hello world测试龎赑𥸈𦜍🌏";  // raw string
-    wstring wstr = hai::u8_to_u32(str);       // conversion easily
+    string str = (const char*)u8"😁hello world测试龎赑𥸈𦜍🌏";  // raw string
+    u32string u32str = hai::to_u32(str);                     // conversion easily
     std::print("\"{}\" with length {}\n", str, str.length());
-    std::print("{}\n", hai::u32_to_u8(wstr)); // conversion back and out put
-    for(auto &ch : wstr){
-        std::print("[U+{:04X}]{} ", (int)ch, hai::width(ch)); // code point and visual width
+    std::print("{}\n", hai::to_u8(u32str));                  // conversion back and out put
+    for(auto &ch : u32str){
+        std::print("[U+{:04X}]{} ", (int)ch, hai::width(ch));// code point and visual width
     }
-    std::print("\n{}", hai::str_width(wstr)); // calculate visual width of a string
+    std::print("\n{}", hai::width(u32str));              // calculate visual width of a string
     // nothing more 乁(ツ)厂
     return 0;
 }

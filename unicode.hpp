@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include <string> // string and wstring
+#include <string>  // string\u16string\u32string
 
 
 
@@ -14,13 +14,16 @@ namespace hai {
 #endif
 
 
+// u8 <-> u32
+
 // UTF-8字节流转UTF-32字符串
-inline auto u8_to_u32(const std::string& utf8_str) -> std::wstring {
-    std::wstring ret;
+// can't construct between u8string and string, using 'std::string' as u8string in this library
+inline auto to_u32(const std::string& utf8_str) -> std::u32string {
+    std::u32string ret;
     ret.reserve(utf8_str.length());
     auto ch = utf8_str.begin();
     while(ch!=utf8_str.end()) {
-        int utf32_char;
+        char32_t utf32_char;
         // 判断当前字节的前缀，确定字符的字节数
         if ((*ch & 0x80) == 0) {
             // 1字节字符 (ASCII字符)
@@ -55,8 +58,8 @@ inline auto u8_to_u32(const std::string& utf8_str) -> std::wstring {
 }
 
 
-// UTF-32字符串转UTF-8多字节
-inline auto u32ch_to_u8(const wchar_t& utf32) -> std::string {
+// UTF-32单字符转UTF-8多字节
+inline auto to_u8(const wchar_t& utf32) -> std::string {
     std::string utf8_str;
     if (utf32 <= 0x7F) {
         // 1字节：0xxxxxxx
@@ -82,7 +85,7 @@ inline auto u32ch_to_u8(const wchar_t& utf32) -> std::string {
 
 
 // UTF-32字符串转UTF-8字节流
-inline auto u32_to_u8(const std::wstring& utf32) -> std::string {
+inline auto to_u8(const std::u32string& utf32) -> std::string {
     std::string utf8_str; utf8_str.reserve(utf32.length());
     for(auto ch : utf32){
         if (ch <= 0x7F) {
@@ -117,15 +120,15 @@ inline auto u32_to_u8(const std::wstring& utf32) -> std::string {
 
 
 struct _range_ {
-    int first;
-    int last;
+    char32_t first;
+    char32_t last;
 };
 
 
 
 // sorted list of non-overlapping ranges of non-spacing characters
 // 无宽度码点的列表, 当落在此表内, 宽度为0
-static constexpr struct _range_ non_cpace[] = {
+static inline constexpr struct _range_ non_cpace[] = {
     { 0x0300, 0x036F }, { 0x0483, 0x0486 }, { 0x0488, 0x0489 },
     { 0x0591, 0x05BD }, { 0x05BF, 0x05BF }, { 0x05C1, 0x05C2 },
     { 0x05C4, 0x05C5 }, { 0x05C7, 0x05C7 }, { 0x0600, 0x0603 },
@@ -180,7 +183,7 @@ static constexpr struct _range_ non_cpace[] = {
 
 // sorted list of wide characters (with width 2)
 // 全宽字符码点的列表, 此表内的字符为参考文档中标为 W 和 F 的字符, 宽度为2
-static constexpr struct _range_ wide[] {
+static inline constexpr struct _range_ wide[] {
     { 0x1100,  0x115F  },    { 0x231A,  0x231B  },    { 0x2329,  0x2329  },
     { 0x232A,  0x232A  },    { 0x23E9,  0x23EC  },    { 0x23F0,  0x23F0  },
     { 0x23F3,  0x23F3  },    { 0x25FD,  0x25FE  },    { 0x2614,  0x2615  },
@@ -287,8 +290,8 @@ static constexpr struct _range_ wide[] {
  * 有一个设置本地化的步骤, 东亚环境中宽度为2, 西方环境宽度为 1
  * 注意: 本库默认为东亚环境, 不需要设置本地化, 如果需要调整请更改此标志位
  */
-static int8_t width_of_non_overlapping_ranges = 2;
-static constexpr _range_ non_overlapping[] {
+inline int8_t width_of_non_overlapping_ranges = 2;
+static inline constexpr _range_ non_overlapping[] {
     {0x00A1,   0x00A1  },    {0x00A4,   0x00A4  },    {0x00A7,   0x00A7  },
     {0x00A8,   0x00A8  },    {0x00AA,   0x00AA  },    {0x00AD,   0x00AD  },
     {0x00AE,   0x00AE  },    {0x00B0,   0x00B0  },    {0x00B1,   0x00B1  },
@@ -358,24 +361,24 @@ static constexpr _range_ non_overlapping[] {
 };
 
 
-static constexpr unsigned int len1 = sizeof(non_cpace) / sizeof(_range_);
-static constexpr unsigned int len2 = sizeof(wide) / sizeof(_range_);
-static constexpr unsigned int len3 = sizeof(non_overlapping) / sizeof(_range_);
+static inline constexpr unsigned int len1 = sizeof(non_cpace) / sizeof(_range_);
+static inline constexpr unsigned int len2 = sizeof(wide) / sizeof(_range_);
+static inline constexpr unsigned int len3 = sizeof(non_overlapping) / sizeof(_range_);
 
 
 
 // binary search in a table
 // 二分查找
-static auto bin_search(const wchar_t& ucs, const struct _range_* table, int max_idx) -> bool {
-  	int min_idx = 0;
-  	int mid_idx;
+static inline auto bin_search(const char32_t& ucs, const struct _range_* table, char32_t max_idx) -> bool {
+  	char32_t min_idx = 0;
+  	char32_t mid_idx;
 	// out of range
   	if (ucs < table[0].first || ucs > table[max_idx].last){
   	  	return false;
 	}
  	while (max_idx >= min_idx) {
 		// average
-    	mid_idx = (min_idx + max_idx) / 2;
+    	mid_idx = (min_idx + max_idx) >> 1;
     	if (ucs > table[mid_idx].last) {
     	  	min_idx = mid_idx + 1;
 		} else if (ucs < table[mid_idx].first) {
@@ -389,7 +392,7 @@ static auto bin_search(const wchar_t& ucs, const struct _range_* table, int max_
 
 
 
-inline auto width(wchar_t ucs) -> int8_t {
+inline auto width(char32_t ucs) -> int8_t {
 	// zero
 	if(ucs == 0){
 		return 0;
@@ -416,7 +419,7 @@ inline auto width(wchar_t ucs) -> int8_t {
 
 
 
-inline auto str_width(const std::wstring& str) -> unsigned int {
+inline auto width(const std::u32string& str) -> unsigned int {
     unsigned int ret = 0;
     for(auto &ch : str){
         int8_t w = width(ch);
