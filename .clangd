@@ -9,6 +9,7 @@ CompileFlags:
     - "-Wcast-align"
     - "-Wfree-nonheap-object"
     - "-stdlib=libstdc++"
+    - "-fprebuilt-module-path=."
 
 InlayHints:
   Enabled: false

@@ -1,114 +1,8 @@
-#pragma once
+module;
 
 #include <string>  // string\u16string\u32string
 
-namespace hai {
-
-#ifndef int8_t
-#define int8_t signed char
-#endif
-
-// u8 <-> u32
-
-// UTF-8字节流转UTF-32字符串
-// can't construct between u8string and string, using 'std::string' as u8string in this library
-inline auto to_u32(const std::string& utf8_str) -> std::u32string {
-    std::u32string ret;
-    ret.reserve(utf8_str.length());
-    auto ch = utf8_str.begin();
-    while (ch != utf8_str.end()) {
-        char32_t utf32_char;
-        // 判断当前字节的前缀，确定字符的字节数
-        if ((*ch & 0x80) == 0) {
-            // 1字节字符 (ASCII字符)
-            utf32_char = *ch;
-            ch++;
-        } else if ((*ch & 0xE0) == 0xC0) {
-            // 2字节字符
-            utf32_char = (*ch & 0x1F) << 6;
-            utf32_char |= (*(ch + 1) & 0x3F);
-            ch += 2;
-        } else if ((*ch & 0xF0) == 0xE0) {
-            // 3字节字符
-            utf32_char = (*ch & 0x0F) << 12;
-            utf32_char |= (*(ch + 1) & 0x3F) << 6;
-            utf32_char |= (*(ch + 2) & 0x3F);
-            ch += 3;
-        } else if ((*ch & 0xF8) == 0xF0) {
-            // 4字节字符
-            utf32_char = (*ch & 0x07) << 18;
-            utf32_char |= (*(ch + 1) & 0x3F) << 12;
-            utf32_char |= (*(ch + 2) & 0x3F) << 6;
-            utf32_char |= (*(ch + 3) & 0x3F);
-            ch += 4;
-        } else {
-            utf32_char = 0xFFFD;  // 字符"�"
-            ch++;
-            continue;
-        }
-        ret += utf32_char;
-    }
-    return ret;
-}
-
-// UTF-32单字符转UTF-8多字节
-inline auto to_u8(const wchar_t& utf32) -> std::string {
-    std::string utf8_str;
-    if (utf32 <= 0x7F) {
-        // 1字节：0xxxxxxx
-        utf8_str += (char)utf32;
-    } else if (utf32 <= 0x7FF) {
-        // 2字节：110xxxxx 10xxxxxx
-        utf8_str += (char)(0xC0 | ((utf32 >> 6) & 0x1F));  // 第1字节：110 + 高5位
-        utf8_str += (char)(0x80 | (utf32 & 0x3F));         // 第2字节：10 + 低6位
-    } else if (utf32 <= 0xFFFF) {
-        // 3字节：1110xxxx 10xxxxxx 10xxxxxx
-        utf8_str += (char)(0xE0 | ((utf32 >> 12) & 0x0F));  // 第1字节：1110 + 高4位
-        utf8_str += (char)(0x80 | ((utf32 >> 6) & 0x3F));   // 第2字节：10 + 中间6位
-        utf8_str += (char)(0x80 | (utf32 & 0x3F));          // 第3字节：10 + 低6位
-    } else {
-        // 4字节：11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-        utf8_str += (char)(0xF0 | ((utf32 >> 18) & 0x07));  // 第1字节：11110 + 高3位
-        utf8_str += (char)(0x80 | ((utf32 >> 12) & 0x3F));  // 第2字节：10 + 次高6位
-        utf8_str += (char)(0x80 | ((utf32 >> 6) & 0x3F));   // 第3字节：10 + 中间6位
-        utf8_str += (char)(0x80 | (utf32 & 0x3F));          // 第4字节：10 + 低6位
-    }
-    return utf8_str;
-}
-
-// UTF-32字符串转UTF-8字节流
-inline auto to_u8(const std::u32string& utf32) -> std::string {
-    std::string utf8_str;
-    utf8_str.reserve(utf32.length());
-    for (auto ch : utf32) {
-        if (ch <= 0x7F) {
-            // 1字节：0xxxxxxx
-            utf8_str += (char)ch;
-        } else if (ch <= 0x7FF) {
-            // 2字节：110xxxxx 10xxxxxx
-            utf8_str += (char)(0xC0 | ((ch >> 6) & 0x1F));  // 第1字节：110 + 高5位
-            utf8_str += (char)(0x80 | (ch & 0x3F));         // 第2字节：10 + 低6位
-        } else if (ch <= 0xFFFF) {
-            // 3字节：1110xxxx 10xxxxxx 10xxxxxx
-            utf8_str += (char)(0xE0 | ((ch >> 12) & 0x0F));  // 第1字节：1110 + 高4位
-            utf8_str += (char)(0x80 | ((ch >> 6) & 0x3F));   // 第2字节：10 + 中间6位
-            utf8_str += (char)(0x80 | (ch & 0x3F));          // 第3字节：10 + 低6位
-        } else {
-            // 4字节：11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-            utf8_str += (char)(0xF0 | ((ch >> 18) & 0x07));  // 第1字节：11110 + 高3位
-            utf8_str += (char)(0x80 | ((ch >> 12) & 0x3F));  // 第2字节：10 + 次高6位
-            utf8_str += (char)(0x80 | ((ch >> 6) & 0x3F));   // 第3字节：10 + 中间6位
-            utf8_str += (char)(0x80 | (ch & 0x3F));          // 第4字节：10 + 低6位
-        }
-    }
-    return utf8_str;
-}
-
-/////////////////////
-/* width calculate */
-/////////////////////
-
-namespace {
+export module unicode;
 
 struct _range_ {
     char32_t first;
@@ -170,6 +64,7 @@ inline constexpr struct _range_ non_cpace[] = {
     { 0x1D242, 0x1D244 }, { 0xE0001, 0xE0001 }, { 0xE0020, 0xE007F },
     { 0xE0100, 0xE01EF }
 };
+
 
 
 // sorted list of wide characters (with width 2)
@@ -279,7 +174,7 @@ inline constexpr struct _range_ wide[] {
 // sorted list of non-overlapping ranges of East Asian Ambiguous
 /* 东亚歧义字符列表, 这些字符的宽度取决于环境, 这也是为什么大多数 unicode 库都
  * 有一个设置本地化的步骤, 东亚环境中宽度为2, 西方环境宽度为 1
- * 注意: 本库默认为东亚环境, 不需要设置本地化, 如果需要调整请更改标志位位于384
+ * 注意: 本库默认为东亚环境, 不需要设置本地化, 如果需要调整请更改标志位位于383行
  */
 inline constexpr _range_ non_overlapping[] {
     {0x00A1,   0x00A1  },    {0x00A4,   0x00A4  },    {0x00A7,   0x00A7  },
@@ -350,11 +245,11 @@ inline constexpr _range_ non_overlapping[] {
     {0xE0100,  0xE01EF },    {0xF0000,  0xFFFFD },    {0x100000, 0x10FFFD}
 };
 
+// clang-format on
+
 inline constexpr unsigned int len1 = sizeof(non_cpace) / sizeof(_range_);
 inline constexpr unsigned int len2 = sizeof(wide) / sizeof(_range_);
 inline constexpr unsigned int len3 = sizeof(non_overlapping) / sizeof(_range_);
-
-// clang-format on
 
 // binary search in a table
 // 二分查找
@@ -379,7 +274,111 @@ inline auto bin_search(const char32_t& ucs, const struct _range_* table, char32_
     return false;
 }
 
-}  // anonymous namespace
+export namespace hai {
+
+#ifndef int8_t
+#define int8_t signed char
+#endif
+
+// u8 <-> u32
+
+// UTF-8字节流转UTF-32字符串
+// can't construct between u8string and string, using 'std::string' as u8string in this library
+inline auto to_u32(const std::string& utf8_str) -> std::u32string {
+    std::u32string ret;
+    ret.reserve(utf8_str.length());
+    auto ch = utf8_str.begin();
+    while (ch != utf8_str.end()) {
+        char32_t utf32_char;
+        // 判断当前字节的前缀，确定字符的字节数
+        if ((*ch & 0x80) == 0) {
+            // 1字节字符 (ASCII字符)
+            utf32_char = *ch;
+            ch++;
+        } else if ((*ch & 0xE0) == 0xC0) {
+            // 2字节字符
+            utf32_char = (*ch & 0x1F) << 6;
+            utf32_char |= (*(ch + 1) & 0x3F);
+            ch += 2;
+        } else if ((*ch & 0xF0) == 0xE0) {
+            // 3字节字符
+            utf32_char = (*ch & 0x0F) << 12;
+            utf32_char |= (*(ch + 1) & 0x3F) << 6;
+            utf32_char |= (*(ch + 2) & 0x3F);
+            ch += 3;
+        } else if ((*ch & 0xF8) == 0xF0) {
+            // 4字节字符
+            utf32_char = (*ch & 0x07) << 18;
+            utf32_char |= (*(ch + 1) & 0x3F) << 12;
+            utf32_char |= (*(ch + 2) & 0x3F) << 6;
+            utf32_char |= (*(ch + 3) & 0x3F);
+            ch += 4;
+        } else {
+            utf32_char = 0xFFFD;  // 字符"�"
+            ch++;
+            continue;
+        }
+        ret += utf32_char;
+    }
+    return ret;
+}
+
+// UTF-32单字符转UTF-8多字节
+inline auto to_u8(const wchar_t& utf32) -> std::string {
+    std::string utf8_str;
+    if (utf32 <= 0x7F) {
+        // 1字节：0xxxxxxx
+        utf8_str += (char)utf32;
+    } else if (utf32 <= 0x7FF) {
+        // 2字节：110xxxxx 10xxxxxx
+        utf8_str += (char)(0xC0 | ((utf32 >> 6) & 0x1F));  // 第1字节：110 + 高5位
+        utf8_str += (char)(0x80 | (utf32 & 0x3F));         // 第2字节：10 + 低6位
+    } else if (utf32 <= 0xFFFF) {
+        // 3字节：1110xxxx 10xxxxxx 10xxxxxx
+        utf8_str += (char)(0xE0 | ((utf32 >> 12) & 0x0F));  // 第1字节：1110 + 高4位
+        utf8_str += (char)(0x80 | ((utf32 >> 6) & 0x3F));   // 第2字节：10 + 中间6位
+        utf8_str += (char)(0x80 | (utf32 & 0x3F));          // 第3字节：10 + 低6位
+    } else {
+        // 4字节：11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+        utf8_str += (char)(0xF0 | ((utf32 >> 18) & 0x07));  // 第1字节：11110 + 高3位
+        utf8_str += (char)(0x80 | ((utf32 >> 12) & 0x3F));  // 第2字节：10 + 次高6位
+        utf8_str += (char)(0x80 | ((utf32 >> 6) & 0x3F));   // 第3字节：10 + 中间6位
+        utf8_str += (char)(0x80 | (utf32 & 0x3F));          // 第4字节：10 + 低6位
+    }
+    return utf8_str;
+}
+
+// UTF-32字符串转UTF-8字节流
+inline auto to_u8(const std::u32string& utf32) -> std::string {
+    std::string utf8_str;
+    utf8_str.reserve(utf32.length());
+    for (auto ch : utf32) {
+        if (ch <= 0x7F) {
+            // 1字节：0xxxxxxx
+            utf8_str += (char)ch;
+        } else if (ch <= 0x7FF) {
+            // 2字节：110xxxxx 10xxxxxx
+            utf8_str += (char)(0xC0 | ((ch >> 6) & 0x1F));  // 第1字节：110 + 高5位
+            utf8_str += (char)(0x80 | (ch & 0x3F));         // 第2字节：10 + 低6位
+        } else if (ch <= 0xFFFF) {
+            // 3字节：1110xxxx 10xxxxxx 10xxxxxx
+            utf8_str += (char)(0xE0 | ((ch >> 12) & 0x0F));  // 第1字节：1110 + 高4位
+            utf8_str += (char)(0x80 | ((ch >> 6) & 0x3F));   // 第2字节：10 + 中间6位
+            utf8_str += (char)(0x80 | (ch & 0x3F));          // 第3字节：10 + 低6位
+        } else {
+            // 4字节：11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+            utf8_str += (char)(0xF0 | ((ch >> 18) & 0x07));  // 第1字节：11110 + 高3位
+            utf8_str += (char)(0x80 | ((ch >> 12) & 0x3F));  // 第2字节：10 + 次高6位
+            utf8_str += (char)(0x80 | ((ch >> 6) & 0x3F));   // 第3字节：10 + 中间6位
+            utf8_str += (char)(0x80 | (ch & 0x3F));          // 第4字节：10 + 低6位
+        }
+    }
+    return utf8_str;
+}
+
+/////////////////////
+/* width calculate */
+/////////////////////
 
 inline int8_t width_of_non_overlapping_ranges = 2;
 
@@ -423,4 +422,4 @@ inline auto width(const std::u32string& str) -> unsigned int {
 }  // namespace hai
 
 
-#undef int8_t
+#undef int8_t // 在模块里其实无所谓, 污染不到外面
